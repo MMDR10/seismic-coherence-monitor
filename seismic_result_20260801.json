@@ -1,24 +1,24 @@
 {
   "date": "20260801",
-  "window_start": "2026-07-31T02:49:36.698113Z",
-  "window_end": "2026-08-01T02:49:36.698113Z",
+  "window_start": "2026-07-31T10:07:12.830610Z",
+  "window_end": "2026-08-01T10:07:12.830610Z",
   "stations": [
     "NACB",
     "YHNB",
     "SSLB"
   ],
-  "n_windows": 1439,
-  "mean_coh": 0.06918993933263659,
-  "max_coh": 0.3394528270616783,
-  "p95_coh": 0.08351843468190186,
-  "p99_coh": 0.13227848741500067,
+  "n_windows": 831,
+  "mean_coh": 0.0696451952946303,
+  "max_coh": 0.30005872932857935,
+  "p95_coh": 0.0831243519869283,
+  "p99_coh": 0.11902743514394952,
   "baseline_p99": 0.205,
-  "frac_above_p99": 0.0020847810979847115,
+  "frac_above_p99": 0.0048134777376654635,
   "longest_run_above_p99": 1,
-  "mean_ratio_vs_control": 1.017499107832891,
-  "n_eq_ge45": null,
-  "n_eq_ge50": null,
+  "mean_ratio_vs_control": 1.0241940484504455,
+  "n_eq_ge45": 0,
+  "n_eq_ge50": 0,
   "earthquakes": [],
   "alert": false,
-  "updated_utc": "2026-08-01T03:49:54"
+  "updated_utc": "2026-08-01T11:07:24"
 }
