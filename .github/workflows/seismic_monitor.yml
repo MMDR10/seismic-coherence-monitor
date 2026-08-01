@@ -1,0 +1,88 @@
+name: 🌏 Seismic Coherence Monitor (daily)
+
+on:
+  schedule:
+    - cron: '30 5 * * *'   # 每日 05:30 UTC = 13:30 HKT，前一日 24h 數據已齊
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Date YYYYMMDD (default: yesterday)'
+        required: false
+        default: ''
+      hours:
+        description: 'Window hours (default 24)'
+        required: false
+        default: '24'
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install numpy scipy obspy
+
+      - name: Run daily coherence monitor
+        id: run
+        env:
+          DATE_ARG: ${{ github.event.inputs.date }}
+          HOURS_ARG: ${{ github.event.inputs.hours }}
+        run: |
+          EXTRA=""
+          if [ -n "$DATE_ARG" ]; then
+            EXTRA="$EXTRA --date $DATE_ARG"
+          fi
+          if [ -n "$HOURS_ARG" ]; then
+            EXTRA="$EXTRA --hours $HOURS_ARG"
+          fi
+          python seismic_monitor.py $EXTRA --outdir . 2>&1
+
+      - name: Print today's summary
+        run: |
+          python -c "
+          import json, glob
+          files = sorted(glob.glob('seismic_result_*.json'))
+          d = json.load(open(files[-1]))
+          print(f'📅 {d[\"date\"]}  mean_coh={d[\"mean_coh\"]:.4f}  max={d[\"max_coh\"]:.4f}')
+          print(f'   >p99: {100*d[\"frac_above_p99\"]:.1f}%  longest_run={d[\"longest_run_above_p99\"]}')
+          print(f'   M≥5 事件: {d[\"n_eq_ge50\"]}   ALERT: {d[\"alert\"]}')
+          "
+
+      - name: Commit results
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "Seismic Monitor Bot"
+          git config user.email "bot@seismic-monitor.local"
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/MMDR10/seismic-coherence-monitor.git
+          git add seismic_result_*.json seismic_history.json
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "🌏 Seismic coherence: daily auto-track $(date -u '+%Y-%m-%d %H:%M UTC')"
+          # Retry push (workflow 可能同時 push)
+          for i in 1 2 3 4 5; do
+            if git push; then
+              echo "✅ Pushed on attempt $i"
+              exit 0
+            fi
+            echo "⚠️ Push attempt $i failed, pulling + retrying..."
+            git pull --rebase origin main || true
+            sleep 5
+          done
+          echo "❌ Push failed after 5 attempts"
+          exit 1

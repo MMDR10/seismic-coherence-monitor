@@ -1,0 +1,19 @@
+{
+  "control_baseline": {
+    "mean": 0.068,
+    "p99": 0.205,
+    "desc": "2022-09-14 \u63a7\u5236\u65e5 TW NACB/YHNB/SSLB"
+  },
+  "records": [
+    {
+      "date": "20260731",
+      "mean_coh": 0.06724180394486724,
+      "max_coh": 0.18275440566802928,
+      "p99_coh": 0.12294345416784276,
+      "frac_above_p99": 0.0,
+      "longest_run_above_p99": 0,
+      "n_eq_ge50": null,
+      "alert": false
+    }
+  ]
+}
