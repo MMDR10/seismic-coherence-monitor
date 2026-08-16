@@ -1,0 +1,32 @@
+{
+  "date": "20260816",
+  "window_start": "2026-08-15T04:54:16.309203Z",
+  "window_end": "2026-08-16T04:54:16.309203Z",
+  "stations": [
+    "NACB",
+    "YHNB",
+    "SSLB"
+  ],
+  "n_windows": 1144,
+  "mean_coh": 0.06745787019688561,
+  "max_coh": 0.4706590546195241,
+  "p95_coh": 0.09030306514710944,
+  "p99_coh": 0.16662622156760845,
+  "baseline_p99": 0.205,
+  "frac_above_p99": 0.005244755244755245,
+  "longest_run_above_p99": 2,
+  "mean_ratio_vs_control": 0.9920275028953766,
+  "n_eq_ge45": 1,
+  "n_eq_ge50": 0,
+  "earthquakes": [
+    {
+      "time": 1786793415368,
+      "mag": 4.9,
+      "lon": 122.2931,
+      "lat": 24.4732,
+      "place": "63 km ESE of Yilan, Taiwan"
+    }
+  ],
+  "alert": false,
+  "updated_utc": "2026-08-16T05:54:29"
+}
