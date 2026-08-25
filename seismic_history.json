@@ -254,6 +254,16 @@
       "longest_run_above_p99": 1,
       "n_eq_ge50": 0,
       "alert": false
+    },
+    {
+      "date": "20260825",
+      "mean_coh": 0.0632009318103735,
+      "max_coh": 0.3963400078711301,
+      "p99_coh": 0.1148812315283914,
+      "frac_above_p99": 0.0018814675446848542,
+      "longest_run_above_p99": 1,
+      "n_eq_ge50": 0,
+      "alert": false
     }
   ]
 }
