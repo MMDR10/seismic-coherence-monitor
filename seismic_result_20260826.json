@@ -1,0 +1,32 @@
+{
+  "date": "20260826",
+  "window_start": "2026-08-25T04:59:55.191678Z",
+  "window_end": "2026-08-26T04:59:55.191678Z",
+  "stations": [
+    "NACB",
+    "YHNB",
+    "SSLB"
+  ],
+  "n_windows": 1139,
+  "mean_coh": 0.06588345986277955,
+  "max_coh": 0.7173425921716302,
+  "p95_coh": 0.07701770137775965,
+  "p99_coh": 0.1574668248565118,
+  "baseline_p99": 0.205,
+  "frac_above_p99": 0.0052677787532923615,
+  "longest_run_above_p99": 1,
+  "mean_ratio_vs_control": 0.968874409746758,
+  "n_eq_ge45": 1,
+  "n_eq_ge50": 1,
+  "earthquakes": [
+    {
+      "time": 1787641210853,
+      "mag": 5.5,
+      "lon": 121.5709,
+      "lat": 22.6053,
+      "place": "108 km NE of Hengchun, Taiwan"
+    }
+  ],
+  "alert": false,
+  "updated_utc": "2026-08-26T06:02:35"
+}
