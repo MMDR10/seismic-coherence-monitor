@@ -1,0 +1,32 @@
+{
+  "date": "20260827",
+  "window_start": "2026-08-26T15:38:53.688281Z",
+  "window_end": "2026-08-27T15:38:53.688281Z",
+  "stations": [
+    "NACB",
+    "YHNB",
+    "SSLB"
+  ],
+  "n_windows": 500,
+  "mean_coh": 0.06486983717862395,
+  "max_coh": 0.31181832578832486,
+  "p95_coh": 0.07940902268160221,
+  "p99_coh": 0.14245181274942065,
+  "baseline_p99": 0.205,
+  "frac_above_p99": 0.002,
+  "longest_run_above_p99": 1,
+  "mean_ratio_vs_control": 0.9539681938032933,
+  "n_eq_ge45": 1,
+  "n_eq_ge50": 0,
+  "earthquakes": [
+    {
+      "time": 1787780840969,
+      "mag": 4.6,
+      "lon": 121.4502,
+      "lat": 22.8296,
+      "place": "106 km ESE of Yujing, Taiwan"
+    }
+  ],
+  "alert": false,
+  "updated_utc": "2026-08-27T16:39:02"
+}
