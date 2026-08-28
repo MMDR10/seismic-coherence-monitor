@@ -1,0 +1,24 @@
+{
+  "date": "20260828",
+  "window_start": "2026-08-27T16:37:09.443621Z",
+  "window_end": "2026-08-28T16:37:09.443621Z",
+  "stations": [
+    "NACB",
+    "YHNB",
+    "SSLB"
+  ],
+  "n_windows": 119,
+  "mean_coh": 0.06376558386730904,
+  "max_coh": 0.15296557701621122,
+  "p95_coh": 0.07167257365344051,
+  "p99_coh": 0.1292703875336134,
+  "baseline_p99": 0.205,
+  "frac_above_p99": 0.0,
+  "longest_run_above_p99": 0,
+  "mean_ratio_vs_control": 0.9377291745192506,
+  "n_eq_ge45": 0,
+  "n_eq_ge50": 0,
+  "earthquakes": [],
+  "alert": false,
+  "updated_utc": "2026-08-28T17:37:45"
+}
