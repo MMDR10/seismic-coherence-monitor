@@ -52,10 +52,15 @@ python seismic_monitor.py --hours 6 --stations NACB,YHNB,SSLB
 - `seismic_result_YYYYMMDD.json` — 當日測量
 - `seismic_history.json` — 累積時間序列
 
-## 警報邏輯
+## 警報邏輯（v2 雙警報）
 
-`alert=True` 當：>baseline p99 比例 ≥5% **且** 最長連續 ≥8 窗口（=8+ 分鐘持續抬升）。
+**`alert=True`（v1 分佈抬升型，對應火山 tremor 式持續抬升）**：
+>baseline p99 比例 ≥5% **且** 最長連續 ≥8 窗口（=8+ 分鐘持續抬升）。
 有 M≥5 地震時高 coherence 係預期行為；無地震時高 coherence 先係異常（待查）。
+
+**`spike_alert=True`（v2 瞬時+對齊型，對應地震 spike）**：
+全日 max_coh 為 spike（robust z ≥ 6 或 max_coh ≥ 0.55）**且** 與 USGS M≥4.5 事件 ±30 分鐘對齊。
+v1 對瞬時 spike 免疫（8/25 M5.5 個案），v2 補返呢個盲區。
 
 ## 作者
 
