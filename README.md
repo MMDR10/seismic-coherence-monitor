@@ -23,6 +23,17 @@
 4. **判據**：對比控制日 baseline p99=0.205（>p99 比例 + 最長連續窗口）
 5. **記錄**：append 至 `seismic_history.json`（長期數據收集）
 
+## v2 升級（2026-09-01）
+
+回應 8/25 M5.5（Hengchun NE）個案：v1「分佈抬升」判據漏報瞬時 spike（max_coh=0.717 @ 地震前 1 分鐘，但 frac>p99 僅 0.5%）。v2 新增：
+
+- **spike 偵測（L1）**：`max_coh` 時刻 + robust z-score（vs 全日 MAD）+ max/median ratio；與 USGS 事件 ±30 分鐘對齊檢查 → `spike_alert`
+- **時間序列存檔（L1）**：`coh_series`（全日 120s/60s 值）寫入每日 result，之後唔使重跑先拎到峰值時刻
+- **雙頻帶對照（L2）**：新增 0.1–0.5 Hz band（火山研究實錘 lock 帶），含第二頻帶 coherence + Hilbert 相位鎖定 `c=cos(Δφ)` kappa
+- **判據並行**：`alert`（v1 分佈抬升型）與 `spike_alert`（v2 瞬時+事件對齊型）獨立輸出，歷史 schema 向後相容
+
+驗證（本機重算）：8/25 M5.5 → `spike_alert=True`（z=89.7，峰值 06:59 UTC = 地震前 1 分鐘）；8/15 M4.9 → `spike_alert=True`（峰值 11:29 UTC = 地震前 1 分鐘）；8/01 無地震 → `spike_alert=False`（無誤報）。兩次事件峰值均出現於地震前 1 分鐘，pattern 一致。
+
 ## 使用
 
 ```bash
