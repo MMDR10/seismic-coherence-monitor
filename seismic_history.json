@@ -1082,6 +1082,23 @@
       "spike_aligned": false,
       "band01_05_max": 0.15918809902251643,
       "band01_05_kappa_max": 0.3237570665927319
+    },
+    {
+      "date": "20261016",
+      "mean_coh": 0.06776173611664704,
+      "max_coh": 0.3492600486410052,
+      "p99_coh": 0.14995106613022524,
+      "frac_above_p99": 0.006254343293954135,
+      "longest_run_above_p99": 2,
+      "n_eq_ge50": 0,
+      "alert": false,
+      "spike_alert": false,
+      "spike_max_coh": 0.3492600486410052,
+      "spike_max_z": 45.1681091634086,
+      "spike_time_utc": "2026-10-15T11:50:16.658607Z",
+      "spike_aligned": false,
+      "band01_05_max": 0.25685419499102763,
+      "band01_05_kappa_max": 0.24636193985070706
     }
   ]
 }
