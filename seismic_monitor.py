@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Seismic Coherence Monitor v2 — 每日自動監測台灣近場站 spectral coherence + spike 偵測
+Seismic Coherence Monitor v3 — 每日自動監測台灣近場站 spectral coherence + spike 偵測
 ======================================================================================
 v2 升級（2026-09-01, DR 補足 — 回應 8/26 M5.5 個案盲區）：
   L1. spike 偵測：max_coh 時刻 + max/median ratio + robust z-score；USGS event 時間對齊
@@ -8,6 +8,16 @@ v2 升級（2026-09-01, DR 補足 — 回應 8/26 M5.5 個案盲區）：
   L2. 第二頻帶 0.1-0.5Hz coherence + 相位鎖定 kappa（c=cos(Δφ)，3 站 pair 平均）
       —— 火山研究實錘 broad 0.5-5Hz 係「反轉帶」，真正鎖定喺 0.1-0.5Hz；做雙頻帶對照
   v1 判據保留（>p99 比例 ≥5% / 連續 ≥8 窗，分佈抬升型），新增 spike_alert（瞬時型）
+
+v3 升級（2026-11-13, DR — 10 無震日重校 + rolling 自校準）：
+  L1. 常數重校：CONTROL_P99 0.205→0.145 / CONTROL_MEAN 0.068→0.066 / ABS_SPIKE 0.55→0.31
+      （舊 2022-09-14 單控制日 baseline 已 stale：ABS_SPIKE 跌入無震日背景 0.30–0.58；
+      10 無震日 23,510 窗 pooled 校準，FP 驗證 0/10，見 REPORT3）
+  L2. rolling 30-day 自校準：由 seismic_history.json 每日摘要 median-of-daily-p99 自動追蹤
+      背景漂移；污染防護 = 排除事件日（spike_alert / n_eq_ge50>0）+ clamp [0.5×,2.5×]；
+      乾淨日 <7 → fallback 固定常數。記錄 baseline_source 於 result
+  L3. v1 連續窗門檻 8→10（--run-threshold）：10 無震日 max run=5，margin 1.6×→2×
+  L4. Z_SPIKE 標記為裝飾性：無震日 in-day z 39–83 恒過線（重尾），v2 真 gate 係事件對齊
 
 基於 D₁ 框架 cross-domain 發現（2026-08-01 耦合測試）：spectral coherence 係地震域
 reliable discriminator；控制日 (2022-09-14) mean=0.068, p99=0.205, max=0.392。
@@ -43,12 +53,20 @@ BAND_LO, BAND_HI = 0.5, 5.0          # v1 主頻帶
 BAND2_LO, BAND2_HI = 0.1, 0.5        # v2 第二頻帶（火山研究鎖定帶）
 WIN_S, STEP_S = 120, 60
 NPERSEG = 256
-CONTROL_P99 = 0.205   # 2022-09-14 控制日實測（3 站全日）
-CONTROL_MEAN = 0.068
-# v2 spike 閾值
-Z_SPIKE = 6.0          # robust z-score（max vs 全日 MAD）≥ 6 視為 spike
-ABS_SPIKE = 0.55       # 或 max_coh 絕對值 ≥ 0.55（控制日 max=0.392）
+# ---- v3 重校常數（2026-11-13；10 無震日 pooled 23,510 窗：TW 10-02/08/14/19/25/31, 11-05/07/10/12）----
+CONTROL_P99 = 0.145   # pooled p99（舊 0.205=2022-09-14 單日，偏高損靈敏度；見 REPORT3）
+CONTROL_MEAN = 0.066  # pooled mean（舊 0.068，實質唔變）
+BAND2_P99_REF = 0.133 # 0.1-0.5Hz coherence 參考線（pooled p99）
+KAPPA_P99_REF = 0.183 # 0.1-0.5Hz kappa 參考線（pooled p99）
+# v2 spike 閾值（v3 重校）
+Z_SPIKE = 6.0          # ⚠️ 裝飾性：無震日 in-day z 39–83 恒過線（重尾），實質永不 binding
+ABS_SPIKE = 0.31       # optB = pooled p99.9（舊 0.55 跌入背景 0.30–0.58；0.31 保留 M3.x 同震偵測）
 ALIGN_MIN = 30         # max_coh 時刻與 M≥4.5 事件 ±30 分鐘
+# ---- v3 rolling 自校準 ----
+RUN_THRESHOLD = 10     # v1 連續窗門檻（v2=8；10 無震日 max run=5 → margin 2×）
+ROLLING_DAYS = 30      # rolling 窗口（日數）
+ROLLING_MIN_DAYS = 7   # 乾淨日 < 呢個數 → fallback 固定常數
+ROLLING_CLAMP = (0.5, 2.5)  # rolling p99 相對 CONTROL_P99 嘅 clamp（防 history 污染跑飛）
 USGS_URL = ('https://earthquake.usgs.gov/fdsnws/event/1/query'
             '?format=geojson&starttime={}&endtime={}&minmagnitude=4.5'
             '&minlatitude=21.5&maxlatitude=25.5&minlongitude=119.5&maxlongitude=122.5')
@@ -197,18 +215,67 @@ def detect_spike(ts, cohs, start, evs):
     return out
 
 
+def rolling_baseline(hist, days=ROLLING_DAYS, min_days=ROLLING_MIN_DAYS):
+    """v3 rolling 自校準：由 history records 嘅每日摘要（p99_coh/mean_coh）估 rolling baseline。
+    estimator = median-of-daily-p99（對單日污染 robust；10 無震日驗證 ≈ pooled p99）。
+    污染防護：① 排除事件日（spike_alert=True 或 n_eq_ge50>0）② clamp [0.5×,2.5×]×CONTROL_P99。
+    回傳 dict；唔夠乾淨日回傳 None（caller fallback 固定常數）。
+    註：history schema 只存每日摘要（唔存全序列），所以唔可以 pooled windows；
+    band B / kappa 暫用固定參考線（BAND2_P99_REF / KAPPA_P99_REF）。
+    """
+    recs = hist.get('records', []) if isinstance(hist, dict) else []
+    if not recs:
+        return None
+    recs = sorted(recs, key=lambda r: r.get('date', ''))[-days:]
+    clean = [r for r in recs
+             if not r.get('spike_alert') and not (r.get('n_eq_ge50') or 0) > 0
+             and r.get('p99_coh') is not None]
+    if len(clean) < min_days:
+        return None
+    p99s = np.array([r['p99_coh'] for r in clean], dtype=float)
+    means = np.array([r.get('mean_coh') for r in clean if r.get('mean_coh') is not None], dtype=float)
+    med = float(np.median(p99s))
+    lo, hi = ROLLING_CLAMP[0] * CONTROL_P99, ROLLING_CLAMP[1] * CONTROL_P99
+    p99 = float(np.clip(med, lo, hi))
+    return {
+        'p99': round(p99, 4),
+        'mean': round(float(np.median(means)), 4) if means.size else None,
+        'n_days_used': len(clean),
+        'n_days_excluded': len(recs) - len(clean),
+        'daily_p99_range': [round(float(p99s.min()), 4), round(float(p99s.max()), 4)],
+        'clamped': bool(med < lo or med > hi),
+    }
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--date', default=None, help='YYYYMMDD (default: yesterday UTC)')
     ap.add_argument('--hours', type=int, default=24)
     ap.add_argument('--stations', default=','.join(DEFAULT_STATIONS))
-    ap.add_argument('--baseline-p99', type=float, default=CONTROL_P99)
+    ap.add_argument('--baseline-p99', type=float, default=CONTROL_P99,
+                    help='固定 fallback p99（rolling 數據唔夠時用）')
+    ap.add_argument('--run-threshold', type=int, default=RUN_THRESHOLD,
+                    help='v1 連續超標窗口門檻（v3: 10）')
     ap.add_argument('--outdir', default='.')
     args = ap.parse_args()
 
     stations = [s.strip() for s in args.stations.split(',') if s.strip()]
     outdir = args.outdir
     os.makedirs(outdir, exist_ok=True)
+
+    # v3 rolling 自校準（先讀 history 決定 baseline，再做當日分析）
+    hpath = os.path.join(outdir, 'seismic_history.json')
+    hist_existing = None
+    if os.path.exists(hpath):
+        with open(hpath) as f:
+            hist_existing = json.load(f)
+    roll = rolling_baseline(hist_existing) if hist_existing else None
+    if roll:
+        baseline_p99 = roll['p99']
+        baseline_source = f'rolling_{ROLLING_DAYS}d(n={roll["n_days_used"]})'
+    else:
+        baseline_p99 = args.baseline_p99
+        baseline_source = f'fixed({args.baseline_p99})'
 
     if args.date:
         end = UTCDateTime(args.date + 'T00:00:00')
@@ -219,9 +286,9 @@ def main():
         start = end - args.hours * 3600
         day_tag = end.strftime('%Y%m%d')
 
-    print(f'Seismic Coherence Monitor v2 — {day_tag}')
+    print(f'Seismic Coherence Monitor v3 — {day_tag}')
     print(f'  window: {start} → {end} ({args.hours}h)')
-    print(f'  stations: {stations}  baseline p99={args.baseline_p99:.3f}')
+    print(f'  stations: {stations}  baseline p99={baseline_p99:.4f} [{baseline_source}]')
 
     # 1) USGS 交叉驗證（先查有冇地震，再決定睇法）
     evs = usgs_events(start, end)
@@ -255,11 +322,11 @@ def main():
           f'p99={np.percentile(cohs2, 99):.4f}  kappa mean={np.mean(kap):.4f} '
           f'max={np.max(kap):.4f}')
 
-    # 4) v1 判據 vs baseline（分佈抬升型）
-    frac_above = float(np.mean(cohs > args.baseline_p99))
-    run = longest_run(cohs > args.baseline_p99)
+    # 4) v1 判據 vs baseline（分佈抬升型；v3: rolling baseline + run 門檻 10）
+    frac_above = float(np.mean(cohs > baseline_p99))
+    run = longest_run(cohs > baseline_p99)
     mean_ratio = float(np.mean(cohs) / CONTROL_MEAN) if CONTROL_MEAN else 0.0
-    alert = (frac_above >= 0.05 or run >= 8)
+    alert = (frac_above >= 0.05 or run >= args.run_threshold)
     if evs is not None and big:
         alert = alert and True  # 有地震時高 coherence 係預期行為
     else:
@@ -268,7 +335,8 @@ def main():
     # 4b) v2 spike 偵測（瞬時型）
     spike = detect_spike(ts, cohs, start, evs)
 
-    print(f'  >baseline p99 ({args.baseline_p99}): {100*frac_above:.1f}%  最長連續 {run} 窗口')
+    print(f'  >baseline p99 ({baseline_p99:.4f} @ {baseline_source}): {100*frac_above:.1f}%  '
+          f'最長連續 {run} 窗口 (門檻 {args.run_threshold})')
     print(f'  mean / 控制日 mean ratio: {mean_ratio:.2f}x')
     print(f'  [v1] 🚨 ALERT(分佈抬升): {alert}')
     print(f'  [v2] spike: max={spike["max_coh"]:.4f} @ {spike["max_coh_time_utc"][11:16]}UTC '
@@ -286,7 +354,10 @@ def main():
         'max_coh': float(np.max(cohs)),
         'p95_coh': float(np.percentile(cohs, 95)),
         'p99_coh': float(np.percentile(cohs, 99)),
-        'baseline_p99': args.baseline_p99,
+        'baseline_p99': baseline_p99,
+        'baseline_source': baseline_source,
+        'rolling': roll,
+        'run_threshold': args.run_threshold,
         'frac_above_p99': frac_above,
         'longest_run_above_p99': int(run),
         'mean_ratio_vs_control': mean_ratio,
@@ -336,6 +407,8 @@ def main():
         'spike_aligned': spike['event_aligned'],
         'band01_05_max': float(np.max(cohs2)),
         'band01_05_kappa_max': float(np.max(kap)),
+        'band01_05_p99': float(np.percentile(cohs2, 99)),
+        'band01_05_kappa_p99': float(np.percentile(kap, 99)),
     })
     hist['records'].sort(key=lambda r: r['date'])
     with open(hpath, 'w') as f:
